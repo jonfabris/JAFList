@@ -46,18 +46,68 @@ class AppViewModel: ObservableObject {
         dataStore.save()
     }
 
+    // MARK: - Subfolder Operations
+
+    func addSubfolder(to parentFolderID: UUID, name: String) {
+        guard let idx = appData.folders.firstIndex(where: { $0.id == parentFolderID }) else { return }
+        appData.folders[idx].subfolders.append(Folder(name: name))
+        appData.lastModified = Date()
+        dataStore.appData = appData
+        dataStore.save()
+    }
+
+    func deleteSubfolder(parentFolderID: UUID, subfolderID: UUID) {
+        guard let idx = appData.folders.firstIndex(where: { $0.id == parentFolderID }) else { return }
+        appData.folders[idx].subfolders.removeAll { $0.id == subfolderID }
+        appData.lastModified = Date()
+        dataStore.appData = appData
+        dataStore.save()
+    }
+
+    func renameFolder(id: UUID, newName: String) {
+        if let fi = appData.folders.firstIndex(where: { $0.id == id }) {
+            appData.folders[fi].name = newName
+        } else {
+            for fi in appData.folders.indices {
+                if let si = appData.folders[fi].subfolders.firstIndex(where: { $0.id == id }) {
+                    appData.folders[fi].subfolders[si].name = newName
+                    break
+                }
+            }
+        }
+        appData.lastModified = Date()
+        dataStore.appData = appData
+        dataStore.save()
+    }
+
     // MARK: - Item Operations
 
-    func addItem(to folderID: UUID, text: String, parentID: UUID? = nil) {
-        guard let folderIndex = appData.folders.firstIndex(where: { $0.id == folderID }) else { return }
-
-        let newItem = TodoItem(text: text)
-
-        if let parentID = parentID {
-            addChildItem(newItem, to: parentID, in: &appData.folders[folderIndex].items)
-        } else {
-            appData.folders[folderIndex].items.append(newItem)
+    /// Finds the items array for a given folder ID (top-level or subfolder) and runs an action on it.
+    @discardableResult
+    private func withFolderItems(folderID: UUID, action: (inout [TodoItem]) -> Void) -> Bool {
+        if let fi = appData.folders.firstIndex(where: { $0.id == folderID }) {
+            action(&appData.folders[fi].items)
+            return true
         }
+        for fi in appData.folders.indices {
+            if let si = appData.folders[fi].subfolders.firstIndex(where: { $0.id == folderID }) {
+                action(&appData.folders[fi].subfolders[si].items)
+                return true
+            }
+        }
+        return false
+    }
+
+    func addItem(to folderID: UUID, text: String, parentID: UUID? = nil) {
+        let newItem = TodoItem(text: text)
+        let found = withFolderItems(folderID: folderID) { items in
+            if let parentID = parentID {
+                self.addChildItem(newItem, to: parentID, in: &items)
+            } else {
+                items.append(newItem)
+            }
+        }
+        guard found else { return }
 
         appData.lastModified = Date()
         dataStore.appData = appData
@@ -76,9 +126,10 @@ class AppViewModel: ObservableObject {
     }
 
     func toggleItemCompletion(folderID: UUID, itemID: UUID) {
-        guard let folderIndex = appData.folders.firstIndex(where: { $0.id == folderID }) else { return }
-
-        toggleCompletion(itemID: itemID, in: &appData.folders[folderIndex].items)
+        let found = withFolderItems(folderID: folderID) { items in
+            self.toggleCompletion(itemID: itemID, in: &items)
+        }
+        guard found else { return }
         appData.lastModified = Date()
         dataStore.appData = appData
         dataStore.save()
@@ -95,9 +146,9 @@ class AppViewModel: ObservableObject {
     }
 
     func toggleItemExpansion(folderID: UUID, itemID: UUID) {
-        guard let folderIndex = appData.folders.firstIndex(where: { $0.id == folderID }) else { return }
-
-        toggleExpansion(itemID: itemID, in: &appData.folders[folderIndex].items)
+        withFolderItems(folderID: folderID) { items in
+            self.toggleExpansion(itemID: itemID, in: &items)
+        }
         dataStore.appData = appData
         dataStore.saveLocalOnly()  // UI state only — don't update lastModified or sync
     }
@@ -113,8 +164,10 @@ class AppViewModel: ObservableObject {
     }
 
     func editItem(folderID: UUID, itemID: UUID, newText: String) {
-        guard let folderIndex = appData.folders.firstIndex(where: { $0.id == folderID }) else { return }
-        editItemText(itemID: itemID, newText: newText, in: &appData.folders[folderIndex].items)
+        let found = withFolderItems(folderID: folderID) { items in
+            self.editItemText(itemID: itemID, newText: newText, in: &items)
+        }
+        guard found else { return }
         appData.lastModified = Date()
         dataStore.appData = appData
         dataStore.save()
@@ -131,19 +184,20 @@ class AppViewModel: ObservableObject {
     }
 
     func deleteItem(folderID: UUID, itemID: UUID) {
-        guard let folderIndex = appData.folders.firstIndex(where: { $0.id == folderID }) else { return }
-
-        deleteItem(itemID: itemID, from: &appData.folders[folderIndex].items)
+        let found = withFolderItems(folderID: folderID) { items in
+            self.removeItem(itemID: itemID, from: &items)
+        }
+        guard found else { return }
         appData.lastModified = Date()
         dataStore.appData = appData
         dataStore.save()
     }
 
-    private func deleteItem(itemID: UUID, from items: inout [TodoItem]) {
+    private func removeItem(itemID: UUID, from items: inout [TodoItem]) {
         items.removeAll { $0.id == itemID }
 
         for i in items.indices {
-            deleteItem(itemID: itemID, from: &items[i].children)
+            removeItem(itemID: itemID, from: &items[i].children)
         }
     }
 

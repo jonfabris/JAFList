@@ -10,6 +10,8 @@ struct ContentView: View {
 
     @State private var showingAddFolderAlert = false
     @State private var newFolderName = ""
+    @State private var renamingFolderID: UUID? = nil
+    @State private var renameFolderText = ""
 
     var body: some View {
         NavigationStack {
@@ -38,6 +40,13 @@ struct ContentView: View {
                             } label: {
                                 Label("Delete", systemImage: "trash")
                             }
+                            Button {
+                                renamingFolderID = viewModel.appData.folders[index].id
+                                renameFolderText = viewModel.appData.folders[index].name
+                            } label: {
+                                Label("Rename", systemImage: "pencil")
+                            }
+                            .tint(.orange)
                         }
                     }
                 }
@@ -76,6 +85,23 @@ struct ContentView: View {
                         viewModel.addFolder(name: newFolderName)
                         newFolderName = ""
                     }
+                }
+            }
+            .alert("Rename Folder", isPresented: Binding(
+                get: { renamingFolderID != nil },
+                set: { if !$0 { renamingFolderID = nil } }
+            )) {
+                TextField("Folder name", text: $renameFolderText)
+                Button("Cancel", role: .cancel) {
+                    renamingFolderID = nil
+                    renameFolderText = ""
+                }
+                Button("Rename") {
+                    if let id = renamingFolderID, !renameFolderText.isEmpty {
+                        viewModel.renameFolder(id: id, newName: renameFolderText)
+                    }
+                    renamingFolderID = nil
+                    renameFolderText = ""
                 }
             }
         }
