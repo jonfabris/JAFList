@@ -12,6 +12,8 @@ struct ContentView: View {
     @State private var newFolderName = ""
     @State private var renamingFolderID: UUID? = nil
     @State private var renameFolderText = ""
+    @State private var showingRestoreSheet = false
+    @State private var showingSignOutConfirmation = false
 
     var body: some View {
         NavigationStack {
@@ -60,18 +62,26 @@ struct ContentView: View {
                         syncStatusIcon
 
                         Button {
-                            authViewModel.signOut()
+                            showingSignOutConfirmation = true
                         } label: {
                             Image(systemName: "rectangle.portrait.and.arrow.right")
+                        }
+                        
+                        Button {
+                            showingRestoreSheet = true
+                        } label: {
+                            Image(systemName: "clock.arrow.circlepath")
                         }
                     }
                 }
 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        showingAddFolderAlert = true
-                    }) {
-                        Image(systemName: "plus")
+                    HStack {
+                        Button(action: {
+                            showingAddFolderAlert = true
+                        }) {
+                            Image(systemName: "plus")
+                        }
                     }
                 }
             }
@@ -103,6 +113,17 @@ struct ContentView: View {
                     renamingFolderID = nil
                     renameFolderText = ""
                 }
+            }
+            .confirmationDialog("Sign Out", isPresented: $showingSignOutConfirmation, titleVisibility: .visible) {
+                Button("Sign Out", role: .destructive) {
+                    authViewModel.signOut()
+                }
+            } message: {
+                Text("Are you sure you want to sign out?")
+            }
+            .sheet(isPresented: $showingRestoreSheet) {
+                RestoreBackupView()
+                    .environmentObject(viewModel)
             }
         }
     }

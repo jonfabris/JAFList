@@ -102,3 +102,21 @@ struct TodoItemRow: View {
         viewModel.editItem(folderID: folderID, itemID: item.id, newText: trimmed)
     }
 }
+
+#Preview("TodoItemRow") {
+    let folderID = UUID()
+    let item = TodoItem(
+        text: "Buy groceries",
+        isExpanded: true,
+        children: [
+            TodoItem(text: "Milk"),
+            TodoItem(text: "Eggs", isCompleted: true)
+        ]
+    )
+    List {
+        TodoItemRow(item: item, folderID: folderID, depth: 0)
+        TodoItemRow(item: TodoItem(text: "Completed task", isCompleted: true), folderID: folderID, depth: 0)
+        TodoItemRow(item: TodoItem(text: "Nested subitem"), folderID: folderID, depth: 1)
+    }
+    .environmentObject(AppViewModel())
+}

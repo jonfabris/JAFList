@@ -28,6 +28,7 @@ class DataStore: ObservableObject {
 
     init() {
         self.appData = AppData.empty
+        BackupService.shared.performAutoBackupIfNeeded(dataFileURL: fileURL)
         self.appData = load()
     }
 
@@ -98,6 +99,15 @@ class DataStore: ObservableObject {
 
         Task {
             try? await FirebaseService.shared.upload(self.appData)
+        }
+    }
+
+    func restore(from backup: BackupInfo) {
+        do {
+            try BackupService.shared.restore(from: backup, to: fileURL)
+            appData = load()
+        } catch {
+            print("Restore failed: \(error)")
         }
     }
 

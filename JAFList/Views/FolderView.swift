@@ -97,27 +97,20 @@ struct FolderView: View {
                     }
                 }
             } header: {
-                Text("Items")
-            }
-        }
-        .navigationTitle(folder.name)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
                 HStack {
+                    Text("Items")
+                    Spacer()
                     Button {
-                        renameFolderText = folder.name
-                        showingRenameFolderAlert = true
-                    } label: {
-                        Image(systemName: "pencil")
-                    }
-                    Button(action: {
                         showingAddItemSheet = true
-                    }) {
+                    } label: {
                         Image(systemName: "plus")
                     }
+                    .buttonStyle(.plain)
+                    .foregroundColor(.blue)
                 }
             }
         }
+        .navigationTitle(folder.name)
         .sheet(isPresented: $showingAddItemSheet, content: {
             AddItemView(newItemText: $newItemText) {
                 viewModel.addItem(to: folder.id, text: newItemText)
@@ -138,34 +131,29 @@ struct FolderView: View {
                 }
             }
         }
-        .alert("Rename Folder", isPresented: $showingRenameFolderAlert) {
-            TextField("Folder name", text: $renameFolderText)
-            Button("Cancel", role: .cancel) {
-                renameFolderText = ""
-            }
-            Button("Rename") {
-                if !renameFolderText.isEmpty {
-                    viewModel.renameFolder(id: folder.id, newName: renameFolderText)
-                }
-                renameFolderText = ""
-            }
-        }
-        .alert("Rename Folder", isPresented: Binding(
-            get: { renamingSubfolderID != nil },
-            set: { if !$0 { renamingSubfolderID = nil } }
-        )) {
-            TextField("Folder name", text: $renameSubfolderText)
-            Button("Cancel", role: .cancel) {
-                renamingSubfolderID = nil
-                renameSubfolderText = ""
-            }
-            Button("Rename") {
-                if let id = renamingSubfolderID, !renameSubfolderText.isEmpty {
-                    viewModel.renameFolder(id: id, newName: renameSubfolderText)
-                }
-                renamingSubfolderID = nil
-                renameSubfolderText = ""
-            }
-        }
     }
+}
+
+#Preview("FolderView") {
+    @Previewable @State var folder = Folder(
+        name: "Shopping",
+        items: [
+            TodoItem(
+                text: "Groceries",
+                isExpanded: true,
+                children: [
+                    TodoItem(text: "Milk"),
+                    TodoItem(text: "Eggs", isCompleted: true)
+                ]
+            ),
+            TodoItem(text: "Hardware store", isCompleted: true)
+        ],
+        subfolders: [
+            Folder(name: "Weekend errands")
+        ]
+    )
+    NavigationStack {
+        FolderView(folder: $folder)
+    }
+    .environmentObject(AppViewModel())
 }

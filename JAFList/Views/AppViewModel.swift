@@ -201,6 +201,16 @@ class AppViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Backup & Restore
+
+    func availableBackups() -> [BackupInfo] {
+        BackupService.shared.listBackups()
+    }
+
+    func restore(from backup: BackupInfo) {
+        dataStore.restore(from: backup)
+    }
+
     // MARK: - Export
 
     func exportJSONFile() -> URL {
