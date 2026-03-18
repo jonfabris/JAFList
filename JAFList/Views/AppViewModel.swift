@@ -8,6 +8,7 @@ import Combine
 class AppViewModel: ObservableObject {
     @Published var appData: AppData
     @Published var syncStatus: SyncStatus = .idle
+    @Published var lastSyncDate: Date? = nil
     private let dataStore: DataStore
     private var cancellables = Set<AnyCancellable>()
 
@@ -23,6 +24,10 @@ class AppViewModel: ObservableObject {
         dataStore.$syncStatus
             .assign(to: &$syncStatus)
 
+        // Forward last sync date
+        dataStore.$lastSyncDate
+            .assign(to: &$lastSyncDate)
+
         // Load cloud data after local data is ready
         Task {
             await dataStore.initializeCloud()
@@ -36,14 +41,14 @@ class AppViewModel: ObservableObject {
         appData.folders.append(newFolder)
         appData.lastModified = Date()
         dataStore.appData = appData
-        dataStore.save()
+        dataStore.saveImmediately()
     }
 
     func deleteFolder(id: UUID) {
         appData.folders.removeAll { $0.id == id }
         appData.lastModified = Date()
         dataStore.appData = appData
-        dataStore.save()
+        dataStore.saveImmediately()
     }
 
     // MARK: - Subfolder Operations
@@ -53,7 +58,7 @@ class AppViewModel: ObservableObject {
         appData.folders[idx].subfolders.append(Folder(name: name))
         appData.lastModified = Date()
         dataStore.appData = appData
-        dataStore.save()
+        dataStore.saveImmediately()
     }
 
     func deleteSubfolder(parentFolderID: UUID, subfolderID: UUID) {
@@ -61,7 +66,7 @@ class AppViewModel: ObservableObject {
         appData.folders[idx].subfolders.removeAll { $0.id == subfolderID }
         appData.lastModified = Date()
         dataStore.appData = appData
-        dataStore.save()
+        dataStore.saveImmediately()
     }
 
     func renameFolder(id: UUID, newName: String) {
@@ -77,7 +82,7 @@ class AppViewModel: ObservableObject {
         }
         appData.lastModified = Date()
         dataStore.appData = appData
-        dataStore.save()
+        dataStore.saveImmediately()
     }
 
     // MARK: - Item Operations
@@ -111,7 +116,7 @@ class AppViewModel: ObservableObject {
 
         appData.lastModified = Date()
         dataStore.appData = appData
-        dataStore.save()
+        dataStore.saveImmediately()
     }
 
     private func addChildItem(_ item: TodoItem, to parentID: UUID, in items: inout [TodoItem]) {
@@ -132,7 +137,7 @@ class AppViewModel: ObservableObject {
         guard found else { return }
         appData.lastModified = Date()
         dataStore.appData = appData
-        dataStore.save()
+        dataStore.saveImmediately()
     }
 
     private func toggleCompletion(itemID: UUID, in items: inout [TodoItem]) {
@@ -170,7 +175,7 @@ class AppViewModel: ObservableObject {
         guard found else { return }
         appData.lastModified = Date()
         dataStore.appData = appData
-        dataStore.save()
+        dataStore.saveImmediately()
     }
 
     private func editItemText(itemID: UUID, newText: String, in items: inout [TodoItem]) {
@@ -190,7 +195,7 @@ class AppViewModel: ObservableObject {
         guard found else { return }
         appData.lastModified = Date()
         dataStore.appData = appData
-        dataStore.save()
+        dataStore.saveImmediately()
     }
 
     private func removeItem(itemID: UUID, from items: inout [TodoItem]) {
@@ -216,6 +221,10 @@ class AppViewModel: ObservableObject {
     func exportJSONFile() -> URL {
         dataStore.saveImmediately()
         return dataStore.fileURL
+    }
+
+    func syncWithCloud() async {
+        await dataStore.initializeCloud()
     }
 
     func saveOnBackground() {

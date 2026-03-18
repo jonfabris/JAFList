@@ -17,6 +17,7 @@ enum SyncStatus {
 class DataStore: ObservableObject {
     @Published var appData: AppData
     @Published var syncStatus: SyncStatus = .idle
+    @Published var lastSyncDate: Date? = nil
 
     private var saveTask: Task<Void, Never>?
     private let saveDebounceInterval: TimeInterval = 0.5
@@ -98,14 +99,24 @@ class DataStore: ObservableObject {
         }
 
         Task {
-            try? await FirebaseService.shared.upload(self.appData)
+            await MainActor.run { self.syncStatus = .syncing }
+            do {
+                try await FirebaseService.shared.upload(self.appData)
+                await MainActor.run { self.syncStatus = .synced }
+            } catch {
+                await MainActor.run { self.syncStatus = .offline }
+            }
         }
     }
 
     func restore(from backup: BackupInfo) {
         do {
             try BackupService.shared.restore(from: backup, to: fileURL)
-            appData = load()
+            var restored = load()
+            // Stamp with current time so this data wins future cloud sync comparisons
+            restored.lastModified = Date()
+            appData = restored
+            saveImmediately()
         } catch {
             print("Restore failed: \(error)")
         }
@@ -137,7 +148,10 @@ class DataStore: ObservableObject {
                 try await FirebaseService.shared.upload(localData)
             }
 
-            await MainActor.run { self.syncStatus = .synced }
+            await MainActor.run {
+                self.syncStatus = .synced
+                self.lastSyncDate = Date()
+            }
         } catch {
             print("Cloud initialization error: \(error)")
             await MainActor.run { self.syncStatus = .offline }

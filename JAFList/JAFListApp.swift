@@ -35,6 +35,8 @@ struct JAFListApp: App {
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .background {
                 viewModel.saveOnBackground()
+            } else if newPhase == .active && authViewModel.isSignedIn {
+                Task { await viewModel.syncWithCloud() }
             }
         }
     }

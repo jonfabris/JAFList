@@ -125,6 +125,16 @@ struct ContentView: View {
                 RestoreBackupView()
                     .environmentObject(viewModel)
             }
+            .safeAreaInset(edge: .bottom) {
+                if let date = viewModel.lastSyncDate {
+                    Text("Last synced: \(date.formatted(date: .abbreviated, time: .shortened))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(.bar)
+                }
+            }
         }
     }
 
