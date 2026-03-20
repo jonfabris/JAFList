@@ -112,11 +112,18 @@ struct FolderView: View {
         }
         .navigationTitle(folder.name)
         .sheet(isPresented: $showingAddItemSheet, content: {
-            AddItemView(newItemText: $newItemText) {
-                viewModel.addItem(to: folder.id, text: newItemText)
-                newItemText = ""
-                showingAddItemSheet = false
-            }
+            AddItemView(
+                newItemText: $newItemText,
+                onSave: {
+                    viewModel.addItem(to: folder.id, text: newItemText)
+                    newItemText = ""
+                    showingAddItemSheet = false
+                },
+                onSaveAndAdd: {
+                    viewModel.addItem(to: folder.id, text: newItemText)
+                    newItemText = ""
+                }
+            )
             .presentationDetents([.medium])
         })
         .alert("Add Folder", isPresented: $showingAddSubfolderAlert) {

@@ -9,7 +9,8 @@ struct AddItemView: View {
     
     var newItemText: Binding<String>
     var onSave: () -> Void = { }
-    
+    var onSaveAndAdd: () -> Void = { }
+
     var body: some View {
         VStack {
             TextEditor(text: newItemText)
@@ -17,6 +18,10 @@ struct AddItemView: View {
             HStack {
                 Button("Cancel") {
                     dismiss()
+                }
+                Spacer()
+                Button("Save & Add") {
+                    onSaveAndAdd()
                 }
                 Spacer()
                 Button("Save") {

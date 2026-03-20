@@ -31,9 +31,8 @@ struct TodoItemRow: View {
 
                 // Text / inline edit
                 if isEditing {
-                    TextField("", text: $editText)
+                    TextField("", text: $editText, axis: .vertical)
                         .focused($textFieldFocused)
-                        .onSubmit { commitEdit() }
                         .onChange(of: textFieldFocused) { _, focused in
                             if !focused { commitEdit() }
                         }
